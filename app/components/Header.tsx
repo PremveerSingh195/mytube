@@ -1,12 +1,18 @@
-
+"use client"
+import { useDispatch } from 'react-redux'
 import Hamburger from './icons/Hamburger'
 import RightSideHeader from './RightSideHeader'
+import { toggleSideBar } from '../redux/slices/sidebarToggleSlice'
 
 function Header() {
+
+  const dispatch = useDispatch()
+
+
   return (
     <div className='flex flex-row justify-between items-center mx-6'>
       {/* left side of the header */}
-      <div className='flex flex-row justify-center items-center'><div className='hover:bg-gray-500 p-2 rounded-4xl cursor-pointer'><Hamburger /> </div><img src="/mytubelogo.png" alt="logo" className='w-[150px] h-[80px] -ml-3 select-none' /></div>
+      <div className='flex flex-row justify-center items-center'><div className='hover:bg-gray-500 p-2 rounded-4xl cursor-pointer'><button onClick={()=>dispatch(toggleSideBar())} className='hover:cursor-pointer'><Hamburger /> </button></div><img src="/mytubelogo.png" alt="logo" className='w-[150px] h-[80px] -ml-3 select-none' /></div>
 
       {/* middle of the header */}
       <div>
