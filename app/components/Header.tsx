@@ -8,7 +8,6 @@ function Header() {
 
   const dispatch = useDispatch()
 
-
   return (
     <div className='flex flex-row justify-between items-center mx-6'>
       {/* left side of the header */}
