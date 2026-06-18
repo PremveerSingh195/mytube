@@ -3,10 +3,9 @@
 import LeftSideBar from "./components/LeftSideBar";
 import LeftSideBarSmall from "./components/LeftSideBarSmall";
 import VideoSection from "./components/VideoSection";
-import {useDispatch , useSelector} from "react-redux";
+import { useSelector } from "react-redux";
 
 export default function Home() {
-  const dispatch = useDispatch();
   const isSidebarOpen = useSelector((state: any) => state.toggleSidebar.isSidebarOpen);
 
   console.log(isSidebarOpen , 'dsafadsafds');

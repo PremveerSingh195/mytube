@@ -2,7 +2,15 @@ import React from 'react'
 
 function LeftSideBarSmall() {
   return (
-    <div></div>
+    <div>
+      <ul>
+        <li>sidebar2</li>
+        <li>sidebar2</li>
+        <li>sidebar2</li>
+        <li>sidebar2</li>
+        <li>sidebar2</li>
+      </ul>
+    </div>
   )
 }
 
