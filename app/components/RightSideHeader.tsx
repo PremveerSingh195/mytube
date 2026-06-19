@@ -3,6 +3,7 @@
 import { EllipsisVertical, User } from "lucide-react";
 import { HtmlContext } from "next/dist/server/route-modules/pages/vendored/contexts/entrypoints";
 import React, { useEffect, useRef, useState } from "react";
+import { serverUrl } from "../utils/serverUrl";
 
 function RightSideHeader() {
     const [open, setOpen] = useState(false);
@@ -21,6 +22,26 @@ function RightSideHeader() {
             ...prev,
             [e.target.name]: e.target.value,
         }))
+    }
+
+    const handleSubmit = async ( e: React.FormEvent<HTMLFormElement> ) => {
+      e.preventDefault();
+
+
+      try {
+
+        const response = await fetch(`${serverUrl}/auth/signup` , {
+            method : "POST",
+            headers : {
+                "Content-Type" : "application/json"
+            },
+            body : JSON.stringify(formData)
+        })
+        
+      } catch (error) {
+        
+      }
+
     }
 
     useEffect(() => {
