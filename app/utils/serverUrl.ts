@@ -1,1 +1,1 @@
-export const serverUrl = "http://localhost:8000/api"
+export const serverUrl = "https://mytube-server-wr6f.onrender.com/api"
