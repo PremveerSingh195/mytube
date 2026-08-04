@@ -15,7 +15,6 @@ export default function Home() {
     <div className="flex justify-center flex-row items-center text-white w-full mx-8">
         {isSidebarOpen ? <div className="w-[20%]"><LeftSideBar/></div> : <div><LeftSideBarSmall/></div>}
         <div className="w-[80%]"><VideoSection/>
-        {/* fdsalkf;lddfsa */}
         </div>
     </div>
   );

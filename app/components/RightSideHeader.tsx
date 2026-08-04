@@ -124,8 +124,6 @@ function RightSideHeader() {
       );
 
       setOpenLoginModal(false);
-
-      console.log(data, "dsfafghfdsjghfsdhjg");
     } catch (error) {}
   };
 
