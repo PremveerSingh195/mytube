@@ -7,6 +7,7 @@ import { serverUrl } from "../utils/serverUrl";
 import { useDispatch, useSelector } from "react-redux";
 import { setUser } from "../redux/slices/userSlice";
 import { RootState } from "../redux/store";
+import { GoogleLogin } from "@react-oauth/google";
 
 function RightSideHeader() {
   const [open, setOpen] = useState(false);
@@ -264,6 +265,34 @@ function RightSideHeader() {
               Signup
             </button>
           </p>
+          <GoogleLogin
+            onSuccess={async (response) => {
+              console.log(response.credential);
+              const res = await fetch(`${serverUrl}/auth/google`, {
+                method: "POST",
+                headers: {
+                  "Content-type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify({
+                  token: response.credential,
+                }),
+              });
+
+              const data = await res.json();
+
+              dispatch(
+                setUser({
+                  user: data.user,
+                  accessToken: data.accessToken,
+                }),
+              );
+              setOpenLoginModal(false);
+            }}
+            onError={() => {
+              console.log("Google Login Failed");
+            }}
+          />
         </div>
       )}
 
