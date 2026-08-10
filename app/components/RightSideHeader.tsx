@@ -1,32 +1,36 @@
 "use client";
 
-import { EllipsisVertical, User } from "lucide-react";
-import { HtmlContext } from "next/dist/server/route-modules/pages/vendored/contexts/entrypoints";
+import {
+  Bell,
+  ChevronDown,
+  CircleHelp,
+  EllipsisVertical,
+  Flag,
+  LogOut,
+  Plus,
+  Settings,
+  User,
+  X,
+} from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
-import { serverUrl } from "../utils/serverUrl";
-import { useDispatch, useSelector } from "react-redux";
-import { setUser } from "../redux/slices/userSlice";
-import { RootState } from "../redux/store";
 import { GoogleLogin } from "@react-oauth/google";
+import { useDispatch, useSelector } from "react-redux";
+import { serverUrl } from "../utils/serverUrl";
+import { clearUser, setUser } from "../redux/slices/userSlice";
+import { RootState } from "../redux/store";
 
 function RightSideHeader() {
-  const [open, setOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
-
-  const { isAuthenticated } = useSelector(
-    (state: RootState) => state.userSlice,
+  const { isAuthenticated, user } = useSelector(
+    (state: RootState) => state.userSlice
   );
-
-  console.log(isAuthenticated , 'sdfgdsfgsdhjgfjhdg');
-  
-
   const dispatch = useDispatch();
 
-  const [openSignupModal, setOpenSignupModal] = useState<boolean>(false);
-  const [openLoginModal, setOpenLoginModal] = useState<boolean>(false);
+  const [openSettings, setOpenSettings] = useState(false);
+  const [openUserMenu, setOpenUserMenu] = useState(false);
+  const [openSignupModal, setOpenSignupModal] = useState(false);
+  const [openLoginModal, setOpenLoginModal] = useState(false);
 
-  const [openUserDashBoardModal, setOpenUserDashBoardModal] =
-    useState<boolean>(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -56,8 +60,6 @@ function RightSideHeader() {
 
       const data = await response.json();
 
-      console.log(data, "vsgdsfgdfsgdfg");
-
       if (!response.ok) {
         throw new Error(data.message);
       }
@@ -66,40 +68,13 @@ function RightSideHeader() {
         setUser({
           user: data.user,
           accessToken: data.accessToken,
-        }),
+        })
       );
 
       setOpenSignupModal(false);
     } catch (error) {
       console.error(error);
     }
-  };
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  const handleLogin = () => {
-    setOpenSignupModal(false);
-    setOpenLoginModal(true);
-  };
-
-  const handleSignUpButton = () => {
-    setOpenLoginModal(false);
-    setOpenSignupModal(true);
   };
 
   const handleSubmitLogin = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -123,188 +98,337 @@ function RightSideHeader() {
       dispatch(
         setUser({
           user: data.user,
-          accessToken: data.accesstoken,
-        }),
+          accessToken: data.accessToken,
+        })
       );
 
       setOpenLoginModal(false);
-    } catch (error) {}
+    } catch (error) {
+      console.error(error);
+    }
   };
+
+  const handleGoogleLogin = async (credential: string | undefined) => {
+    const res = await fetch(`${serverUrl}/auth/google`, {
+      method: "POST",
+      headers: {
+        "Content-type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        token: credential,
+      }),
+    });
+
+    const data = await res.json();
+
+    dispatch(
+      setUser({
+        user: data.user,
+        accessToken: data.accessToken,
+      })
+    );
+    setOpenLoginModal(false);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await fetch(`${serverUrl}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      dispatch(clearUser());
+      setOpenUserMenu(false);
+    }
+  };
+
+  // close dropdowns when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setOpenSettings(false);
+        setOpenUserMenu(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const openSignup = () => {
+    setOpenLoginModal(false);
+    setOpenSignupModal(true);
+  };
+
+  const openLogin = () => {
+    setOpenSignupModal(false);
+    setOpenLoginModal(true);
+  };
+
+  const inputClass =
+    "w-full rounded-lg border border-[#303030] bg-[#121212] px-4 py-3 text-sm text-white placeholder:text-[#AAAAAA] focus:border-[#3EA6FF] focus:outline-none";
 
   return (
     <div
-      ref={dropdownRef}
-      className="flex flex-row justify-center items-center gap-2"
+      ref={containerRef}
+      className="relative flex items-center gap-1 sm:gap-2"
     >
-      {isAuthenticated && <button className="text-white border py-1.5 px-2 rounded-4xl">
-       + Create
-      </button>}
+      {/* create button */}
+      {isAuthenticated && (
+        <button className="hidden cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white hover:bg-[#272727] lg:flex">
+          <Plus className="h-5 w-5" /> Create
+        </button>
+      )}
+
+      {/* notifications */}
       <button
-        className="cursor-pointer hover:bg-gray-500 hover:rounded-4xl p-1"
-        onClick={() => setOpen(!open)}
+        aria-label="Notifications"
+        className="hidden h-10 w-10 cursor-pointer items-center justify-center rounded-full text-white hover:bg-[#272727] sm:flex"
       >
-        <EllipsisVertical color="white" />
+        <Bell className="h-5 w-5" />
       </button>
-      {open && (
-        <div className="absolute top-16 right-6 bg-[#272727] rounded-lg py-2 px-4 flex flex-col gap-2">
-          <button className="text-white hover:bg-gray-700 rounded-lg py-1 px-2 text-left">
-            Settings
+
+      {/* settings dropdown */}
+      <button
+        aria-label="Settings"
+        className="cursor-pointer rounded-full p-2 text-white hover:bg-[#272727]"
+        onClick={() => {
+          setOpenUserMenu(false);
+          setOpenSettings((prev) => !prev);
+        }}
+      >
+        <EllipsisVertical className="h-5 w-5" />
+      </button>
+      {openSettings && (
+        <div className="absolute right-0 top-14 z-50 w-56 rounded-xl border border-[#303030] bg-[#282828] py-2 shadow-2xl">
+          <button className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-[#3F3F3F]">
+            <Settings className="h-5 w-5" /> Settings
           </button>
-          <button className="text-white hover:bg-gray-700 rounded-lg py-1 px-2 text-left">
-            Help
+          <button className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-[#3F3F3F]">
+            <CircleHelp className="h-5 w-5" /> Help
+          </button>
+          <button className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-[#3F3F3F]">
+            <Flag className="h-5 w-5" /> Report history
           </button>
         </div>
       )}
-      <button
-        onClick={
-          isAuthenticated
-            ? () => setOpenUserDashBoardModal((prev) => !prev)
-            : () => setOpenSignupModal((prev) => !prev)
-        }
-        className="flex flex-row justify-center items-center text-white border rounded-3xl py-1.5 px-2 border-white hover:bg-gray-700 cursor-pointer"
-      >
-        <User color="white" /> {isAuthenticated ? "" : "SignUp"}
-      </button>
 
+      {/* avatar / sign in */}
+      {isAuthenticated ? (
+        <button
+          onClick={() => {
+            setOpenSettings(false);
+            setOpenUserMenu((prev) => !prev);
+          }}
+          className="flex cursor-pointer items-center gap-1 rounded-full p-1 hover:bg-[#272727]"
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3EA6FF] text-sm font-medium text-black">
+            {user?.name?.[0]?.toUpperCase() ?? "U"}
+          </span>
+          <ChevronDown className="h-4 w-4 text-white" />
+        </button>
+      ) : (
+        <button
+          onClick={openLogin}
+          className="flex cursor-pointer items-center gap-2 rounded-full border border-[#3EA6FF] px-4 py-1.5 text-sm font-medium text-[#3EA6FF] hover:bg-[#263850]"
+        >
+          <User className="h-5 w-5" /> Sign in
+        </button>
+      )}
+
+      {/* user menu */}
+      {openUserMenu && (
+        <div className="absolute right-0 top-14 z-50 w-72 rounded-xl border border-[#303030] bg-[#282828] py-2 shadow-2xl">
+          <div className="px-4 py-3">
+            <p className="truncate text-sm font-medium text-white">
+              {user?.name}
+            </p>
+            <p className="truncate text-xs text-[#AAAAAA]">{user?.email}</p>
+          </div>
+          <hr className="border-[#3F3F3F]" />
+          <button className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-[#3F3F3F]">
+            <User className="h-5 w-5" /> Your channel
+          </button>
+          <button className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-[#3F3F3F]">
+            <Settings className="h-5 w-5" /> Settings
+          </button>
+          <hr className="border-[#3F3F3F]" />
+          <button
+            onClick={handleSignOut}
+            className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-[#3F3F3F]"
+          >
+            <LogOut className="h-5 w-5" /> Sign out
+          </button>
+        </div>
+      )}
+
+      {/* signup modal */}
       {openSignupModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 flex-col">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4"
+          onClick={() => setOpenSignupModal(false)}
+        >
           <form
-            className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md flex flex-col gap-4 relative"
+            className="relative my-8 w-full max-w-md rounded-2xl border border-[#303030] bg-[#0F0F0F] p-8 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
             onSubmit={handleSubmit}
           >
             <button
               type="button"
               onClick={() => setOpenSignupModal(false)}
-              className="absolute top-3 right-3 text-xl cursor-pointer"
+              aria-label="Close"
+              className="absolute right-4 top-4 cursor-pointer rounded-full p-1 text-[#AAAAAA] hover:bg-[#272727] hover:text-white"
             >
-              ×
+              <X className="h-5 w-5" />
             </button>
 
-            <h2 className="text-2xl font-bold text-center">Create Account</h2>
+            <h2 className="text-center text-xl font-medium text-white">
+              Create Account
+            </h2>
+            <p className="mt-1 text-center text-sm text-[#AAAAAA]">
+              Join MyTube to like, share & upload videos
+            </p>
 
-            <input
-              type="text"
-              name="name"
-              placeholder="Name"
-              className="border p-2 rounded"
-              onChange={handleChange}
-              value={formData.name}
-            />
-
-            <input
-              type="email"
-              name="email"
-              placeholder="Email"
-              className="border p-2 rounded"
-              onChange={handleChange}
-              value={formData.email}
-            />
-
-            <input
-              type="password"
-              name="password"
-              placeholder="Password"
-              className="border p-2 rounded"
-              onChange={handleChange}
-              value={formData.password}
-            />
+            <div className="mt-6 flex flex-col gap-4">
+              <input
+                type="text"
+                name="name"
+                placeholder="Name"
+                className={inputClass}
+                onChange={handleChange}
+                value={formData.name}
+              />
+              <input
+                type="email"
+                name="email"
+                placeholder="Email"
+                className={inputClass}
+                onChange={handleChange}
+                value={formData.email}
+              />
+              <input
+                type="password"
+                name="password"
+                placeholder="Password"
+                className={inputClass}
+                onChange={handleChange}
+                value={formData.password}
+              />
+            </div>
 
             <button
               type="submit"
-              className="bg-blue-600 text-white py-2 rounded cursor-pointer hover:bg-blue-700"
+              className="mt-6 w-full cursor-pointer rounded-lg bg-[#3EA6FF] py-3 text-sm font-medium text-black hover:bg-[#5bb3ff]"
             >
               Create Account
             </button>
+
+            <p className="mt-4 text-center text-sm text-[#AAAAAA]">
+              Already have an account?{" "}
+              <button
+                type="button"
+                onClick={openLogin}
+                className="cursor-pointer font-medium text-[#3EA6FF] hover:text-[#5bb3ff]"
+              >
+                Sign in
+              </button>
+            </p>
           </form>
-          <p className="mx-auto mt-3 text-white">
-            Already User{" "}
-            <button className="cursor-pointer" onClick={handleLogin}>
-              login
-            </button>
-          </p>
         </div>
       )}
+
+      {/* login modal */}
       {openLoginModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 flex-col">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4"
+          onClick={() => setOpenLoginModal(false)}
+        >
           <form
-            className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md flex flex-col gap-4 relative"
+            className="relative my-8 w-full max-w-md rounded-2xl border border-[#303030] bg-[#0F0F0F] p-8 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
             onSubmit={handleSubmitLogin}
           >
             <button
               type="button"
               onClick={() => setOpenLoginModal(false)}
-              className="absolute top-3 right-3 text-xl cursor-pointer"
+              aria-label="Close"
+              className="absolute right-4 top-4 cursor-pointer rounded-full p-1 text-[#AAAAAA] hover:bg-[#272727] hover:text-white"
             >
-              ×
+              <X className="h-5 w-5" />
             </button>
 
-            <h2 className="text-2xl font-bold text-center">login</h2>
+            <h2 className="text-center text-xl font-medium text-white">
+              Sign in
+            </h2>
+            <p className="mt-1 text-center text-sm text-[#AAAAAA]">
+              Welcome back to MyTube
+            </p>
 
-            <input
-              type="email"
-              name="email"
-              placeholder="Email"
-              className="border p-2 rounded"
-              onChange={handleChange}
-              value={formData.email}
-            />
-
-            <input
-              type="password"
-              name="password"
-              placeholder="Password"
-              className="border p-2 rounded"
-              onChange={handleChange}
-              value={formData.password}
-            />
+            <div className="mt-6 flex flex-col gap-4">
+              <input
+                type="email"
+                name="email"
+                placeholder="Email"
+                className={inputClass}
+                onChange={handleChange}
+                value={formData.email}
+              />
+              <input
+                type="password"
+                name="password"
+                placeholder="Password"
+                className={inputClass}
+                onChange={handleChange}
+                value={formData.password}
+              />
+            </div>
 
             <button
               type="submit"
-              className="bg-blue-600 text-white py-2 rounded cursor-pointer hover:bg-blue-700"
+              className="mt-6 w-full cursor-pointer rounded-lg bg-[#3EA6FF] py-3 text-sm font-medium text-black hover:bg-[#5bb3ff]"
             >
-              login
+              Sign in
             </button>
+
+            <div className="my-5 flex items-center gap-3">
+              <hr className="flex-1 border-[#303030]" />
+              <span className="text-xs uppercase tracking-wide text-[#AAAAAA]">
+                or
+              </span>
+              <hr className="flex-1 border-[#303030]" />
+            </div>
+
+            <div className="flex justify-center">
+              <GoogleLogin
+                onSuccess={async (response) => {
+                  await handleGoogleLogin(response.credential);
+                }}
+                onError={() => {
+                  console.log("Google Login Failed");
+                }}
+              />
+            </div>
+
+            <p className="mt-4 text-center text-sm text-[#AAAAAA]">
+              Don&apos;t have an account?{" "}
+              <button
+                type="button"
+                onClick={openSignup}
+                className="cursor-pointer font-medium text-[#3EA6FF] hover:text-[#5bb3ff]"
+              >
+                Sign up
+              </button>
+            </p>
           </form>
-          <p className="text-white">
-            Don't have account{" "}
-            <button onClick={handleSignUpButton} className="cursor-pointer">
-              Signup
-            </button>
-          </p>
-          <GoogleLogin
-            onSuccess={async (response) => {
-              console.log(response.credential);
-              const res = await fetch(`${serverUrl}/auth/google`, {
-                method: "POST",
-                headers: {
-                  "Content-type": "application/json",
-                },
-                credentials: "include",
-                body: JSON.stringify({
-                  token: response.credential,
-                }),
-              });
-
-              const data = await res.json();
-
-              dispatch(
-                setUser({
-                  user: data.user,
-                  accessToken: data.accessToken,
-                }),
-              );
-              setOpenLoginModal(false);
-            }}
-            onError={() => {
-              console.log("Google Login Failed");
-            }}
-          />
-        </div>
-      )}
-
-      {openUserDashBoardModal && (
-        <div>
-          <h2 className="text-white">user dashboard</h2>
         </div>
       )}
     </div>

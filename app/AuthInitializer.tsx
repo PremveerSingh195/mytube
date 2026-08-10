@@ -27,7 +27,7 @@ export default function AuthInitializer() {
             accessToken: response.data.accessToken,
           })
         );
-      } catch (error) {
+      } catch {
         dispatch(clearUser());
       }
     };
