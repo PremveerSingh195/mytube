@@ -13,9 +13,12 @@ function RightSideHeader() {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  const { user, isAuthenticated } = useSelector(
+  const { isAuthenticated } = useSelector(
     (state: RootState) => state.userSlice,
   );
+
+  console.log(isAuthenticated , 'sdfgdsfgsdhjgfjhdg');
+  
 
   const dispatch = useDispatch();
 
@@ -133,6 +136,9 @@ function RightSideHeader() {
       ref={dropdownRef}
       className="flex flex-row justify-center items-center gap-2"
     >
+      {isAuthenticated && <button className="text-white border py-1.5 px-2 rounded-4xl">
+       + Create
+      </button>}
       <button
         className="cursor-pointer hover:bg-gray-500 hover:rounded-4xl p-1"
         onClick={() => setOpen(!open)}
