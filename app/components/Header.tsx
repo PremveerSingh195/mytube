@@ -1,49 +1,63 @@
-"use client"
-import { useDispatch } from 'react-redux'
-import Hamburger from './icons/Hamburger'
-import RightSideHeader from './RightSideHeader'
-import { toggleSideBar } from '../redux/slices/sidebarToggleSlice'
+"use client";
+import Image from "next/image";
+import { useDispatch } from "react-redux";
+import { Mic, Search } from "lucide-react";
+import Hamburger from "./icons/Hamburger";
+import RightSideHeader from "./RightSideHeader";
+import { toggleSideBar } from "../redux/slices/sidebarToggleSlice";
 
 function Header() {
-
-  const dispatch = useDispatch()
+  const dispatch = useDispatch();
 
   return (
-    <div className='flex flex-row justify-between items-center mx-6'>
+    <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-4 border-b border-[#272727] bg-[#0F0F0F] px-4">
       {/* left side of the header */}
-      <div className='flex flex-row justify-center items-center'><div className='hover:bg-gray-500 p-2 rounded-4xl cursor-pointer'><button onClick={()=>dispatch(toggleSideBar())} className='hover:cursor-pointer'><Hamburger /> </button></div><img src="/mytubelogo.png" alt="logo" className='w-[150px] h-[80px] -ml-3 select-none' /></div>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => dispatch(toggleSideBar())}
+          aria-label="Toggle sidebar"
+          className="cursor-pointer rounded-full p-2 text-white hover:bg-[#272727]"
+        >
+          <Hamburger />
+        </button>
+        <Image
+          src="/mytubelogo.png"
+          alt="MyTube logo"
+          width={150}
+          height={80}
+          className="h-8 w-auto select-none"
+        />
+      </div>
 
       {/* middle of the header */}
-      <div>
-        <div className="relative w-150 border rounded-3xl border-gray-300 focus:outline-none">
-        <input
-          type="text"
-            placeholder="Search"
-            className="w-full  py-2 pl-3 pr-12 focus:outline-none placeholder:text-gray-500 text-white"
-        />
-
-          <span className="absolute inset-y-0 right-0 flex items-center cursor-pointer bg-[#272727] px-6 rounded-r-3xl">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 text-white"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z"
+      <div className="hidden flex-1 justify-center md:flex">
+        <div className="flex w-full max-w-[600px] items-center">
+          <div className="flex h-10 flex-1 items-center overflow-hidden rounded-l-full border border-[#303030] bg-[#121212] focus-within:border-[#3EA6FF]">
+            <input
+              type="text"
+              placeholder="Search"
+              className="w-full bg-transparent px-4 text-sm text-white placeholder:text-[#AAAAAA] focus:outline-none"
             />
-          </svg>
-        </span>
+          </div>
+          <button
+            aria-label="Search"
+            className="flex h-10 w-16 shrink-0 cursor-pointer items-center justify-center rounded-r-full border border-l-0 border-[#303030] bg-[#222222] text-white hover:bg-[#303030]"
+          >
+            <Search className="h-5 w-5" />
+          </button>
+          <button
+            aria-label="Search with voice"
+            className="ml-3 hidden h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#272727] text-white hover:bg-[#3F3F3F] sm:flex"
+          >
+            <Mic className="h-5 w-5" />
+          </button>
         </div>
       </div>
+
       {/* right side of the header */}
       <RightSideHeader />
-    </div>
-  )
+    </header>
+  );
 }
 
-export default Header
+export default Header;
