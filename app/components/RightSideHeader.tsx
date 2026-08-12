@@ -1,11 +1,14 @@
 "use client";
 
 import {
+  ArrowLeft,
   Bell,
+  CheckCircle2,
   ChevronDown,
   CircleHelp,
   EllipsisVertical,
   Flag,
+  KeyRound,
   LogOut,
   Plus,
   Settings,
@@ -29,6 +32,24 @@ function RightSideHeader() {
   const [openUserMenu, setOpenUserMenu] = useState(false);
   const [openSignupModal, setOpenSignupModal] = useState(false);
   const [openLoginModal, setOpenLoginModal] = useState(false);
+
+  // login modal view state
+  const [loginView, setLoginView] = useState<"login" | "forgot">("login");
+  const [forgotStep, setForgotStep] = useState<
+    "email" | "otp" | "password" | "success"
+  >("email");
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [otpDigits, setOtpDigits] = useState<string[]>(["", "", "", ""]);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [forgotStatus, setForgotStatus] = useState<
+    "idle" | "loading" | "error"
+  >("idle");
+  const [forgotError, setForgotError] = useState<string | null>(null);
+  const [forgotInfo, setForgotInfo] = useState<string | null>(null);
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const forgotEmailRef = useRef<HTMLInputElement | null>(null);
+  const newPasswordRef = useRef<HTMLInputElement | null>(null);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -172,7 +193,238 @@ function RightSideHeader() {
   const openLogin = () => {
     setOpenSignupModal(false);
     setOpenLoginModal(true);
+    backToLogin();
   };
+
+  const backToLogin = () => {
+    setLoginView("login");
+    setForgotStep("email");
+    setForgotStatus("idle");
+    setForgotError(null);
+    setForgotInfo(null);
+    setForgotEmail("");
+    setOtpDigits(["", "", "", ""]);
+    setNewPassword("");
+    setConfirmPassword("");
+  };
+
+  const openForgotPassword = () => {
+    setForgotEmail(formData.email);
+    setForgotStep("email");
+    setForgotStatus("idle");
+    setForgotError(null);
+    setForgotInfo(null);
+    setLoginView("forgot");
+  };
+
+  const requestOtp = async (email: string) => {
+    const response = await fetch(`${serverUrl}/auth/sendOtp`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Something went wrong");
+    }
+  };
+
+  const handleSendOtp = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!forgotEmail.trim()) {
+      setForgotStatus("error");
+      setForgotError("Please enter your email address");
+      return;
+    }
+
+    setForgotStatus("loading");
+    setForgotError(null);
+
+    try {
+      await requestOtp(forgotEmail.trim());
+      setForgotStatus("idle");
+      setForgotInfo(null);
+      setOtpDigits(["", "", "", ""]);
+      setForgotStep("otp");
+    } catch (error) {
+      console.error(error);
+      setForgotStatus("error");
+      setForgotError(
+        error instanceof Error ? error.message : "Something went wrong"
+      );
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setForgotStatus("loading");
+    setForgotError(null);
+    setForgotInfo(null);
+
+    try {
+      await requestOtp(forgotEmail.trim());
+      setForgotStatus("idle");
+      setForgotInfo("A new code has been sent to your email");
+      setOtpDigits(["", "", "", ""]);
+      otpRefs.current[0]?.focus();
+    } catch (error) {
+      console.error(error);
+      setForgotStatus("error");
+      setForgotError(
+        error instanceof Error ? error.message : "Something went wrong"
+      );
+    }
+  };
+
+  const handleSubmitOtp = async () => {
+    const otp = otpDigits.join("");
+
+    if (otp.length < 4) {
+      setForgotStatus("error");
+      setForgotError("Please enter the 4-digit code");
+      return;
+    }
+
+    setForgotStatus("loading");
+    setForgotError(null);
+    setForgotInfo(null);
+
+    try {
+      const response = await fetch(`${serverUrl}/auth/verifyOtp`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: forgotEmail.trim(), otp }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Invalid OTP");
+      }
+
+      setForgotStatus("idle");
+      setForgotStep("password");
+    } catch (error) {
+      console.error(error);
+      setForgotStatus("error");
+      setForgotError(
+        error instanceof Error ? error.message : "Something went wrong"
+      );
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!newPassword.trim()) {
+      setForgotStatus("error");
+      setForgotError("Please enter a new password");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setForgotStatus("error");
+      setForgotError("Passwords do not match");
+      return;
+    }
+
+    setForgotStatus("loading");
+    setForgotError(null);
+
+    try {
+      const response = await fetch(`${serverUrl}/auth/resetPassword`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: forgotEmail.trim(),
+          otp: otpDigits.join(""),
+          newPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Something went wrong");
+      }
+
+      setForgotStatus("idle");
+      setForgotStep("success");
+    } catch (error) {
+      console.error(error);
+      setForgotStatus("error");
+      setForgotError(
+        error instanceof Error ? error.message : "Something went wrong"
+      );
+    }
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    const digit = value.replace(/\D/g, "").slice(-1);
+
+    setOtpDigits((prev) => {
+      const next = [...prev];
+      next[index] = digit;
+      return next;
+    });
+
+    if (digit && index < 3) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
+      setOtpDigits((prev) => {
+        const next = [...prev];
+        next[index - 1] = "";
+        return next;
+      });
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 4);
+
+    if (!pasted) return;
+
+    e.preventDefault();
+    setOtpDigits(
+      pasted.split("").concat(["", "", "", ""]).slice(0, 4)
+    );
+    otpRefs.current[Math.min(pasted.length, 3)]?.focus();
+  };
+
+  // focus the right field whenever the forgot step changes
+  useEffect(() => {
+    if (loginView !== "forgot") return;
+
+    if (forgotStep === "otp") {
+      otpRefs.current[0]?.focus();
+    } else if (forgotStep === "password") {
+      newPasswordRef.current?.focus();
+    } else if (forgotStep === "email") {
+      forgotEmailRef.current?.focus();
+    }
+  }, [loginView, forgotStep]);
 
   const inputClass =
     "w-full rounded-lg border border-[#303030] bg-[#121212] px-4 py-3 text-sm text-white placeholder:text-[#AAAAAA] focus:border-[#3EA6FF] focus:outline-none";
@@ -352,83 +604,327 @@ function RightSideHeader() {
           className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4"
           onClick={() => setOpenLoginModal(false)}
         >
-          <form
+          <div
             className="relative my-8 w-full max-w-md rounded-2xl border border-[#303030] bg-[#0F0F0F] p-8 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
-            onSubmit={handleSubmitLogin}
           >
             <button
               type="button"
               onClick={() => setOpenLoginModal(false)}
               aria-label="Close"
-              className="absolute right-4 top-4 cursor-pointer rounded-full p-1 text-[#AAAAAA] hover:bg-[#272727] hover:text-white"
+              className="absolute right-4 top-4 z-10 cursor-pointer rounded-full p-1 text-[#AAAAAA] hover:bg-[#272727] hover:text-white"
             >
               <X className="h-5 w-5" />
             </button>
 
-            <h2 className="text-center text-xl font-medium text-white">
-              Sign in
-            </h2>
-            <p className="mt-1 text-center text-sm text-[#AAAAAA]">
-              Welcome back to MyTube
-            </p>
+            {loginView === "login" && (
+              <form onSubmit={handleSubmitLogin}>
+                <h2 className="text-center text-xl font-medium text-white">
+                  Sign in
+                </h2>
+                <p className="mt-1 text-center text-sm text-[#AAAAAA]">
+                  Welcome back to MyTube
+                </p>
 
-            <div className="mt-6 flex flex-col gap-4">
-              <input
-                type="email"
-                name="email"
-                placeholder="Email"
-                className={inputClass}
-                onChange={handleChange}
-                value={formData.email}
-              />
-              <input
-                type="password"
-                name="password"
-                placeholder="Password"
-                className={inputClass}
-                onChange={handleChange}
-                value={formData.password}
-              />
-            </div>
+                <div className="mt-6 flex flex-col gap-4">
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Email"
+                    className={inputClass}
+                    onChange={handleChange}
+                    value={formData.email}
+                  />
+                  <div>
+                    <input
+                      type="password"
+                      name="password"
+                      placeholder="Password"
+                      className={inputClass}
+                      onChange={handleChange}
+                      value={formData.password}
+                    />
+                    <div className="mt-1.5 text-right">
+                      <button
+                        type="button"
+                        onClick={openForgotPassword}
+                        className="cursor-pointer text-xs font-medium text-[#3EA6FF] hover:text-[#5bb3ff]"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                  </div>
+                </div>
 
-            <button
-              type="submit"
-              className="mt-6 w-full cursor-pointer rounded-lg bg-[#3EA6FF] py-3 text-sm font-medium text-black hover:bg-[#5bb3ff]"
-            >
-              Sign in
-            </button>
+                <button
+                  type="submit"
+                  className="mt-6 w-full cursor-pointer rounded-lg bg-[#3EA6FF] py-3 text-sm font-medium text-black hover:bg-[#5bb3ff]"
+                >
+                  Sign in
+                </button>
 
-            <div className="my-5 flex items-center gap-3">
-              <hr className="flex-1 border-[#303030]" />
-              <span className="text-xs uppercase tracking-wide text-[#AAAAAA]">
-                or
-              </span>
-              <hr className="flex-1 border-[#303030]" />
-            </div>
+                <div className="my-5 flex items-center gap-3">
+                  <hr className="flex-1 border-[#303030]" />
+                  <span className="text-xs uppercase tracking-wide text-[#AAAAAA]">
+                    or
+                  </span>
+                  <hr className="flex-1 border-[#303030]" />
+                </div>
 
-            <div className="flex justify-center">
-              <GoogleLogin
-                onSuccess={async (response) => {
-                  await handleGoogleLogin(response.credential);
-                }}
-                onError={() => {
-                  console.log("Google Login Failed");
-                }}
-              />
-            </div>
+                <div className="flex justify-center">
+                  <GoogleLogin
+                    onSuccess={async (response) => {
+                      await handleGoogleLogin(response.credential);
+                    }}
+                    onError={() => {
+                      console.log("Google Login Failed");
+                    }}
+                  />
+                </div>
 
-            <p className="mt-4 text-center text-sm text-[#AAAAAA]">
-              Don&apos;t have an account?{" "}
-              <button
-                type="button"
-                onClick={openSignup}
-                className="cursor-pointer font-medium text-[#3EA6FF] hover:text-[#5bb3ff]"
-              >
-                Sign up
-              </button>
-            </p>
-          </form>
+                <p className="mt-4 text-center text-sm text-[#AAAAAA]">
+                  Don&apos;t have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={openSignup}
+                    className="cursor-pointer font-medium text-[#3EA6FF] hover:text-[#5bb3ff]"
+                  >
+                    Sign up
+                  </button>
+                </p>
+              </form>
+            )}
+
+            {loginView === "forgot" && forgotStep === "email" && (
+              <form onSubmit={handleSendOtp}>
+                <div className="flex justify-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#263850]">
+                    <KeyRound className="h-8 w-8 text-[#3EA6FF]" />
+                  </div>
+                </div>
+                <h2 className="mt-5 text-center text-xl font-medium text-white">
+                  Forgot password?
+                </h2>
+                <p className="mt-1 text-center text-sm text-[#AAAAAA]">
+                  Enter your email and we&apos;ll send you a 4-digit code to
+                  reset your password
+                </p>
+
+                <div className="mt-6 flex flex-col gap-4">
+                  <input
+                    ref={forgotEmailRef}
+                    type="email"
+                    name="forgotEmail"
+                    placeholder="Email"
+                    className={inputClass}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    value={forgotEmail}
+                  />
+                </div>
+
+                {forgotStatus === "error" && forgotError && (
+                  <p className="mt-3 text-center text-sm text-red-400">
+                    {forgotError}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={forgotStatus === "loading"}
+                  className="mt-6 w-full cursor-pointer rounded-lg bg-[#3EA6FF] py-3 text-sm font-medium text-black hover:bg-[#5bb3ff] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {forgotStatus === "loading" ? "Sending..." : "Get OTP"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={backToLogin}
+                  className="mt-4 flex w-full cursor-pointer items-center justify-center gap-1 text-sm text-[#AAAAAA] hover:text-white"
+                >
+                  <ArrowLeft className="h-4 w-4" /> Back to sign in
+                </button>
+              </form>
+            )}
+
+            {loginView === "forgot" && forgotStep === "otp" && (
+              <div>
+                <div className="flex justify-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#263850]">
+                    <KeyRound className="h-8 w-8 text-[#3EA6FF]" />
+                  </div>
+                </div>
+                <h2 className="mt-5 text-center text-xl font-medium text-white">
+                  Enter OTP
+                </h2>
+                <p className="mt-1 wrap-break-word text-center text-sm text-[#AAAAAA]">
+                  We&apos;ve sent a 4-digit code to{" "}
+                  <span className="font-medium text-white">{forgotEmail}</span>
+                </p>
+
+                <div className="mt-6 flex justify-center gap-3">
+                  {otpDigits.map((digit, index) => (
+                    <input
+                      key={index}
+                      ref={(el) => {
+                        otpRefs.current[index] = el;
+                      }}
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(index, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                      onPaste={handleOtpPaste}
+                      aria-label={`Digit ${index + 1}`}
+                      className="h-14 w-14 rounded-lg border border-[#303030] bg-[#121212] text-center text-xl font-semibold text-white focus:border-[#3EA6FF] focus:outline-none"
+                    />
+                  ))}
+                </div>
+
+                {forgotStatus === "error" && forgotError && (
+                  <p className="mt-3 text-center text-sm text-red-400">
+                    {forgotError}
+                  </p>
+                )}
+
+                {forgotInfo && (
+                  <p className="mt-3 text-center text-sm text-[#4ADE80]">
+                    {forgotInfo}
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleSubmitOtp}
+                  disabled={forgotStatus === "loading"}
+                  className="mt-6 w-full cursor-pointer rounded-lg bg-[#3EA6FF] py-3 text-sm font-medium text-black hover:bg-[#5bb3ff] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {forgotStatus === "loading" ? "Verifying..." : "Submit OTP"}
+                </button>
+
+                <div className="mt-4 flex items-center justify-between text-xs text-[#AAAAAA]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotStatus("idle");
+                      setForgotError(null);
+                      setForgotInfo(null);
+                      setForgotStep("email");
+                    }}
+                    className="cursor-pointer font-medium text-[#3EA6FF] hover:text-[#5bb3ff]"
+                  >
+                    Change email
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={forgotStatus === "loading"}
+                    className="cursor-pointer font-medium text-[#3EA6FF] hover:text-[#5bb3ff] disabled:opacity-60"
+                  >
+                    Resend OTP
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={backToLogin}
+                  className="mt-4 flex w-full cursor-pointer items-center justify-center gap-1 text-sm text-[#AAAAAA] hover:text-white"
+                >
+                  <ArrowLeft className="h-4 w-4" /> Back to sign in
+                </button>
+              </div>
+            )}
+
+            {loginView === "forgot" && forgotStep === "password" && (
+              <form onSubmit={handleResetPassword}>
+                <div className="flex justify-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#263850]">
+                    <KeyRound className="h-8 w-8 text-[#3EA6FF]" />
+                  </div>
+                </div>
+                <h2 className="mt-5 text-center text-xl font-medium text-white">
+                  Set new password
+                </h2>
+                <p className="mt-1 text-center text-sm text-[#AAAAAA]">
+                  Choose a strong password for your account
+                </p>
+
+                <div className="mt-6 flex flex-col gap-4">
+                  <input
+                    ref={newPasswordRef}
+                    type="password"
+                    name="newPassword"
+                    placeholder="New password"
+                    className={inputClass}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    value={newPassword}
+                  />
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    placeholder="Confirm new password"
+                    className={inputClass}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    value={confirmPassword}
+                  />
+                </div>
+
+                {forgotStatus === "error" && forgotError && (
+                  <p className="mt-3 text-center text-sm text-red-400">
+                    {forgotError}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={forgotStatus === "loading"}
+                  className="mt-6 w-full cursor-pointer rounded-lg bg-[#3EA6FF] py-3 text-sm font-medium text-black hover:bg-[#5bb3ff] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {forgotStatus === "loading"
+                    ? "Resetting..."
+                    : "Reset Password"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={backToLogin}
+                  className="mt-4 flex w-full cursor-pointer items-center justify-center gap-1 text-sm text-[#AAAAAA] hover:text-white"
+                >
+                  <ArrowLeft className="h-4 w-4" /> Back to sign in
+                </button>
+              </form>
+            )}
+
+            {loginView === "forgot" && forgotStep === "success" && (
+              <div className="flex flex-col items-center pt-2 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#1D3B28]">
+                  <CheckCircle2 className="h-8 w-8 text-[#4ADE80]" />
+                </div>
+                <h2 className="mt-5 text-xl font-medium text-white">
+                  Password reset successful
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-[#AAAAAA]">
+                  Your password has been updated. You can now sign in with your
+                  new password.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setOpenLoginModal(false)}
+                  className="mt-6 w-full cursor-pointer rounded-lg bg-[#3EA6FF] py-3 text-sm font-medium text-black hover:bg-[#5bb3ff]"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={backToLogin}
+                  className="mt-3 w-full cursor-pointer rounded-lg border border-[#303030] py-3 text-sm font-medium text-white hover:bg-[#272727]"
+                >
+                  Back to sign in
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

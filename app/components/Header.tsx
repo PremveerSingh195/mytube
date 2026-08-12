@@ -31,7 +31,7 @@ function Header() {
 
       {/* middle of the header */}
       <div className="hidden flex-1 justify-center md:flex">
-        <div className="flex w-full max-w-[600px] items-center">
+        <div className="flex w-full max-w-150 items-center">
           <div className="flex h-10 flex-1 items-center overflow-hidden rounded-l-full border border-[#303030] bg-[#121212] focus-within:border-[#3EA6FF]">
             <input
               type="text"

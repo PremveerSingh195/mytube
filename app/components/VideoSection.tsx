@@ -355,14 +355,14 @@ function ShortCard({ video, index }: { video: Video; index: number }) {
       }}
     >
       <div
-        className={`relative aspect-[9/16] w-full overflow-hidden rounded-xl ${video.gradient}`}
+        className={`relative aspect-9/16 w-full overflow-hidden rounded-xl ${video.gradient}`}
       >
         <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60">
             <Play className="h-6 w-6 fill-white text-white" />
           </span>
         </div>
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+        <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 to-transparent p-3">
           <p className="line-clamp-2 text-xs font-medium text-white">
             {video.title}
           </p>
