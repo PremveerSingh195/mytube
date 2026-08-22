@@ -1,12 +1,23 @@
 import { createSlice , PayloadAction } from "@reduxjs/toolkit";
 
-interface User {
-    _id: string;
+export interface Channel {
+    id: number;
     name: string;
-    email: string;
+    description?: string | null;
+    image?: string | null;
 }
 
-interface UserState {
+export interface User {
+    id?: number | string;
+    _id?: number | string;
+    name: string;
+    email: string;
+    profileImage?: string | null;
+    provider?: string;
+    channel?: Channel | null;
+}
+
+export interface UserState {
     user: User | null;
     accessToken : string | null;
     isAuthenticated : boolean;

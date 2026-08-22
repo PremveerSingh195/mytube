@@ -32,6 +32,9 @@ function RightSideHeader() {
   const [openUserMenu, setOpenUserMenu] = useState(false);
   const [openSignupModal, setOpenSignupModal] = useState(false);
   const [openLoginModal, setOpenLoginModal] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [signupError, setSignupError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // login modal view state
   const [loginView, setLoginView] = useState<"login" | "forgot">("login");
@@ -64,11 +67,20 @@ function RightSideHeader() {
       ...prev,
       [e.target.name]: e.target.value,
     }));
+    setLoginError(null);
+    setSignupError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setSignupError(null);
 
+    if (!formData.name.trim() || !formData.email.trim() || !formData.password) {
+      setSignupError("Please fill in all fields");
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       const response = await fetch(`${serverUrl}/auth/register`, {
         method: "POST",
@@ -82,7 +94,7 @@ function RightSideHeader() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message);
+        throw new Error(data.message || "Registration failed");
       }
 
       dispatch(
@@ -93,13 +105,25 @@ function RightSideHeader() {
       );
 
       setOpenSignupModal(false);
+      setFormData({ name: "", email: "", password: "" });
     } catch (error) {
       console.error(error);
+      setSignupError(error instanceof Error ? error.message : "Registration failed");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleSubmitLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setLoginError(null);
+
+    if (!formData.email.trim() || !formData.password) {
+      setLoginError("Please enter both email and password");
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       const response = await fetch(`${serverUrl}/auth/login`, {
         method: "POST",
@@ -107,13 +131,16 @@ function RightSideHeader() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message);
+        throw new Error(data.message || "Login failed");
       }
 
       dispatch(
@@ -124,32 +151,47 @@ function RightSideHeader() {
       );
 
       setOpenLoginModal(false);
+      setFormData({ name: "", email: "", password: "" });
     } catch (error) {
       console.error(error);
+      setLoginError(error instanceof Error ? error.message : "Login failed");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleGoogleLogin = async (credential: string | undefined) => {
-    const res = await fetch(`${serverUrl}/auth/google`, {
-      method: "POST",
-      headers: {
-        "Content-type": "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify({
-        token: credential,
-      }),
-    });
+    if (!credential) return;
+    setLoginError(null);
+    try {
+      const res = await fetch(`${serverUrl}/auth/google`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          token: credential,
+        }),
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    dispatch(
-      setUser({
-        user: data.user,
-        accessToken: data.accessToken,
-      })
-    );
-    setOpenLoginModal(false);
+      if (!res.ok) {
+        throw new Error(data.message || "Google authentication failed");
+      }
+
+      dispatch(
+        setUser({
+          user: data.user,
+          accessToken: data.accessToken,
+        })
+      );
+      setOpenLoginModal(false);
+    } catch (error) {
+      console.error(error);
+      setLoginError(error instanceof Error ? error.message : "Google authentication failed");
+    }
   };
 
   const handleSignOut = async () => {
@@ -483,9 +525,17 @@ function RightSideHeader() {
           }}
           className="flex cursor-pointer items-center gap-1 rounded-full p-1 hover:bg-[#272727]"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3EA6FF] text-sm font-medium text-black">
-            {user?.name?.[0]?.toUpperCase() ?? "U"}
-          </span>
+          {user?.profileImage ? (
+            <img
+              src={user.profileImage}
+              alt={user.name || "User"}
+              className="h-8 w-8 rounded-full object-cover"
+            />
+          ) : (
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3EA6FF] text-sm font-medium text-black">
+              {user?.name?.[0]?.toUpperCase() ?? "U"}
+            </span>
+          )}
           <ChevronDown className="h-4 w-4 text-white" />
         </button>
       ) : (
@@ -500,11 +550,24 @@ function RightSideHeader() {
       {/* user menu */}
       {openUserMenu && (
         <div className="absolute right-0 top-14 z-50 w-72 rounded-xl border border-[#303030] bg-[#282828] py-2 shadow-2xl">
-          <div className="px-4 py-3">
-            <p className="truncate text-sm font-medium text-white">
-              {user?.name}
-            </p>
-            <p className="truncate text-xs text-[#AAAAAA]">{user?.email}</p>
+          <div className="flex items-center gap-3 px-4 py-3">
+            {user?.profileImage ? (
+              <img
+                src={user.profileImage}
+                alt={user.name || "User"}
+                className="h-10 w-10 rounded-full object-cover"
+              />
+            ) : (
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#3EA6FF] text-base font-semibold text-black">
+                {user?.name?.[0]?.toUpperCase() ?? "U"}
+              </span>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-white">
+                {user?.name}
+              </p>
+              <p className="truncate text-xs text-[#AAAAAA]">{user?.email}</p>
+            </div>
           </div>
           <hr className="border-[#3F3F3F]" />
           <button className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-[#3F3F3F]">
@@ -577,11 +640,18 @@ function RightSideHeader() {
               />
             </div>
 
+            {signupError && (
+              <p className="mt-3 text-center text-sm text-red-400">
+                {signupError}
+              </p>
+            )}
+
             <button
               type="submit"
-              className="mt-6 w-full cursor-pointer rounded-lg bg-[#3EA6FF] py-3 text-sm font-medium text-black hover:bg-[#5bb3ff]"
+              disabled={isSubmitting}
+              className="mt-6 w-full cursor-pointer rounded-lg bg-[#3EA6FF] py-3 text-sm font-medium text-black hover:bg-[#5bb3ff] disabled:opacity-60"
             >
-              Create Account
+              {isSubmitting ? "Creating account..." : "Create Account"}
             </button>
 
             <p className="mt-4 text-center text-sm text-[#AAAAAA]">
@@ -656,11 +726,18 @@ function RightSideHeader() {
                   </div>
                 </div>
 
+                {loginError && (
+                  <p className="mt-3 text-center text-sm text-red-400">
+                    {loginError}
+                  </p>
+                )}
+
                 <button
                   type="submit"
-                  className="mt-6 w-full cursor-pointer rounded-lg bg-[#3EA6FF] py-3 text-sm font-medium text-black hover:bg-[#5bb3ff]"
+                  disabled={isSubmitting}
+                  className="mt-6 w-full cursor-pointer rounded-lg bg-[#3EA6FF] py-3 text-sm font-medium text-black hover:bg-[#5bb3ff] disabled:opacity-60"
                 >
-                  Sign in
+                  {isSubmitting ? "Signing in..." : "Sign in"}
                 </button>
 
                 <div className="my-5 flex items-center gap-3">
@@ -678,6 +755,7 @@ function RightSideHeader() {
                     }}
                     onError={() => {
                       console.log("Google Login Failed");
+                      setLoginError("Google Sign-In failed");
                     }}
                   />
                 </div>
